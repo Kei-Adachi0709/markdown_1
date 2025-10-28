@@ -1,0 +1,36 @@
+{
+  "name": "local-markdown-executor",
+  "version": "0.1.0",
+  "description": "Offline Electron-based Markdown editor with executable code blocks.",
+  "main": "dist/main/main.js",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "start": "npm run build && electron dist/main/main.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"scripts/**/*.mjs\""
+  },
+  "dependencies": {
+    "highlight.js": "^11.10.0",
+    "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+  "@types/markdown-it": "^14.1.2",
+  "@types/node": "^22.7.3",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "chokidar": "^4.0.1",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.0",
+    "esbuild": "^0.23.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
