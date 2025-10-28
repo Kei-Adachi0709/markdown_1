@@ -1,4 +1,4 @@
-import { build } from 'esbuild';
+import { context } from 'esbuild';
 import chokidar from 'chokidar';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -15,65 +15,24 @@ import {
 let electronProcess = null;
 let isRestarting = false;
 let staticWatcher = null;
-const buildWatchers = [];
+const watchContexts = [];
 
 async function start() {
   await copyStaticAssets();
   staticWatcher = await watchStaticAssets();
 
-  const [mainWatcher, preloadWatcher, rendererWatcher] = await Promise.all([
-    build({
-      ...createMainBuildOptions(),
-      watch: {
-        onRebuild(error) {
-          if (error) {
-            console.error('[main] build failed:', error);
-          } else {
-            console.log('[main] rebuilt');
-            restartElectron();
-          }
-        },
-      },
-    }),
-    build({
-      ...createPreloadBuildOptions(),
-      watch: {
-        onRebuild(error) {
-          if (error) {
-            console.error('[preload] build failed:', error);
-          } else {
-            console.log('[preload] rebuilt');
-            restartElectron();
-          }
-        },
-      },
-    }),
-    build({
-      ...createRendererBuildOptions(),
-      watch: {
-        onRebuild(error) {
-          if (error) {
-            console.error('[renderer] build failed:', error);
-          } else {
-            console.log('[renderer] rebuilt');
-          }
-        },
-      },
-    }),
+  const [mainContext, preloadContext, rendererContext] = await Promise.all([
+    createWatchContext('main', createMainBuildOptions(), () => restartElectron()),
+    createWatchContext('preload', createPreloadBuildOptions(), () => restartElectron()),
+    createWatchContext('renderer', createRendererBuildOptions()),
   ]);
 
-  buildWatchers.push(mainWatcher, preloadWatcher, rendererWatcher);
+  watchContexts.push(mainContext, preloadContext, rendererContext);
 
   startElectron();
 
   const cleanUp = async () => {
-    await Promise.all(
-      buildWatchers.map(async watcher => {
-        if (watcher?.stop) {
-          await watcher.stop();
-        }
-      }),
-    );
+    await Promise.all(watchContexts.map(ctx => ctx.dispose()));
     if (staticWatcher) {
       await staticWatcher.close();
     }
@@ -125,6 +84,51 @@ function stopElectron() {
     electronProcess = null;
   }
   isRestarting = false;
+}
+
+async function createWatchContext(name, options, onSuccessfulBuild) {
+  let isInitialBuild = true;
+
+  const plugins = [...(options.plugins ?? [])];
+  plugins.push({
+    name: `notify-${name}`,
+    setup(build) {
+      build.onEnd(result => {
+        if (result.errors.length > 0) {
+          console.error(`[${name}] build failed`);
+          for (const error of result.errors) {
+            console.error(error);
+          }
+          return;
+        }
+
+        const label = isInitialBuild ? '[build]' : '[rebuild]';
+        console.log(`${label} ${name}`);
+
+        if (isInitialBuild) {
+          isInitialBuild = false;
+        } else if (onSuccessfulBuild) {
+          onSuccessfulBuild();
+        }
+      });
+    },
+  });
+
+  const ctx = await context({
+    ...options,
+    plugins,
+  });
+
+  try {
+    if (ctx.rebuild) {
+      await ctx.rebuild();
+    }
+  } catch (error) {
+    console.error(`[${name}] initial build failed`, error);
+  }
+
+  await ctx.watch();
+  return ctx;
 }
 
 async function watchStaticAssets() {
