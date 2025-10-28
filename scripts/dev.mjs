@@ -1,4 +1,4 @@
-import { context } from 'esbuild';
+import { build } from 'esbuild';
 import chokidar from 'chokidar';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -15,53 +15,65 @@ import {
 let electronProcess = null;
 let isRestarting = false;
 let staticWatcher = null;
+const buildWatchers = [];
 
 async function start() {
   await copyStaticAssets();
   staticWatcher = await watchStaticAssets();
 
-  const mainCtx = await context(createMainBuildOptions());
-  const preloadCtx = await context(createPreloadBuildOptions());
-  const rendererCtx = await context(createRendererBuildOptions());
-
-  await Promise.all([mainCtx.rebuild(), preloadCtx.rebuild(), rendererCtx.rebuild()]);
-
-  await Promise.all([
-    mainCtx.watch({
-      onRebuild(error) {
-        if (error) {
-          console.error('[main] build failed:', error);
-        } else {
-          console.log('[main] rebuilt');
-          restartElectron();
-        }
+  const [mainWatcher, preloadWatcher, rendererWatcher] = await Promise.all([
+    build({
+      ...createMainBuildOptions(),
+      watch: {
+        onRebuild(error) {
+          if (error) {
+            console.error('[main] build failed:', error);
+          } else {
+            console.log('[main] rebuilt');
+            restartElectron();
+          }
+        },
       },
     }),
-    preloadCtx.watch({
-      onRebuild(error) {
-        if (error) {
-          console.error('[preload] build failed:', error);
-        } else {
-          console.log('[preload] rebuilt');
-          restartElectron();
-        }
+    build({
+      ...createPreloadBuildOptions(),
+      watch: {
+        onRebuild(error) {
+          if (error) {
+            console.error('[preload] build failed:', error);
+          } else {
+            console.log('[preload] rebuilt');
+            restartElectron();
+          }
+        },
       },
     }),
-    rendererCtx.watch({
-      onRebuild(error) {
-        if (error) {
-          console.error('[renderer] build failed:', error);
-        } else {
-          console.log('[renderer] rebuilt');
-        }
+    build({
+      ...createRendererBuildOptions(),
+      watch: {
+        onRebuild(error) {
+          if (error) {
+            console.error('[renderer] build failed:', error);
+          } else {
+            console.log('[renderer] rebuilt');
+          }
+        },
       },
     }),
   ]);
 
+  buildWatchers.push(mainWatcher, preloadWatcher, rendererWatcher);
+
   startElectron();
 
   const cleanUp = async () => {
-    await Promise.all([mainCtx.dispose(), preloadCtx.dispose(), rendererCtx.dispose()]);
+    await Promise.all(
+      buildWatchers.map(async watcher => {
+        if (watcher?.stop) {
+          await watcher.stop();
+        }
+      }),
+    );
     if (staticWatcher) {
       await staticWatcher.close();
     }
