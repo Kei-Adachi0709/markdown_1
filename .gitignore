@@ -1,0 +1,95 @@
+# ------------------------------
+# Node / package managers
+# ------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------
+# Build outputs (Electron/Tooling)
+# ------------------------------
+dist/
+out/
+release/
+make/            # Electron Forge
+# electron-builder/packager artifacts
+*.dmg
+*.exe
+*.app
+*.AppImage
+*.snap
+*.deb
+*.rpm
+*.msi
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# ------------------------------
+# Caches
+# ------------------------------
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+
+# ------------------------------
+# TypeScript
+# ------------------------------
+*.tsbuildinfo
+
+# ------------------------------
+# Tests / Coverage
+# ------------------------------
+coverage/
+.nyc_output/
+
+# ------------------------------
+# Env files (オフライン前提でも個人環境は除外)
+# ------------------------------
+.env
+.env.*
+.env.local
+.env.*.local
+
+# ------------------------------
+# Logs / Temp
+# ------------------------------
+logs/
+*.log
+*.log.*
+tmp/
+temp/
+*.tmp
+*.pid
+pids/
+
+# ------------------------------
+# OS junk
+# ------------------------------
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ------------------------------
+# IDE / Editor
+# ------------------------------
+.idea/
+.history/
+# .vscode は基本除外。ただし共通推奨設定を共有したい場合は下記のように個別で許可
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# ------------------------------
+# Misc
+# ------------------------------
+.sass-cache/
